@@ -104,15 +104,16 @@ static int find_user(const char *uid)        /* caller must hold users_mutex */
 decision_t access_decide(reader_t reader, const char *uid, char *name_out, size_t name_n)
 {
     name_out[0] = '\0';
-    if (!access_schedule_open()) return DEC_OUTSIDE_HOURS;        /* both doors locked outside hours */
+    bool schedule_open = access_schedule_open();
     if (xSemaphoreTake(users_mutex, pdMS_TO_TICKS(100)) != pdTRUE) return DEC_BUSY;
     decision_t d = DEC_ALLOW;
     int i = find_user(uid);
     if (i < 0) {
-        d = DEC_UNKNOWN;
+        d = schedule_open ? DEC_UNKNOWN : DEC_OUTSIDE_HOURS;
     } else {
         util_copy_str(name_out, name_n, users[i].name);
-        if (reader == READER_ENTRY && users[i].inside)       d = DEC_ALREADY_INSIDE;   /* anti-passback */
+        if (!schedule_open)                                  d = DEC_OUTSIDE_HOURS;   /* both doors locked outside hours */
+        else if (reader == READER_ENTRY && users[i].inside)  d = DEC_ALREADY_INSIDE;   /* anti-passback */
         else if (reader == READER_EXIT && !users[i].inside)  d = DEC_NOT_INSIDE;
         else { users[i].inside = (reader == READER_ENTRY); users_dirty = true; }
     }

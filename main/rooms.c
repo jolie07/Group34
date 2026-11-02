@@ -55,7 +55,15 @@ static void rooms_task(void *arg)
             bool hold = r->hold, light = r->light_on;
             xSemaphoreGive(rooms_mutex);
             if (toggled) log_event("ROOM", "", r->name, hold ? "HOLD_ON" : "HOLD_OFF");
-            if (changed) log_event("LIGHT", "", r->name, light ? "ON" : "OFF");
+            if (changed) {
+                log_event("LIGHT", "", r->name, light ? "ON" : "OFF");
+                if (light) {
+                    printf("[%s] %s - light ON\n", r->name,
+                           motion ? "Motion detected" : "Manual hold");
+                } else {
+                    printf("[%s] No motion timeout - light OFF\n", r->name);
+                }
+            }
         }
         vTaskDelay(pdMS_TO_TICKS(50));
     }
