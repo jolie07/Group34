@@ -2,8 +2,8 @@
 
 An ESP-IDF project for an ESP32-based entrance/exit access-control system and
 two-room motion-activated lighting controller. The project is written in C
-and uses FreeRTOS tasks and synchronization primitives. The hardware circuit
-can also be run in Wokwi.
+and uses FreeRTOS tasks and synchronization primitives. 
+The hardware circuit can also be run in Wokwi.
 
 ## Features
 
