@@ -15,3 +15,55 @@ static const uint32_t K[64] = {
     0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
 };
 
+static void block(uint32_t st[8], const uint8_t p[64])
+{
+    uint32_t w[64], a, b, c, d, e, f, g, h;
+    for (int i = 0; i < 16; i++)
+        w[i] = ((uint32_t)p[4*i] << 24) | ((uint32_t)p[4*i+1] << 16) | ((uint32_t)p[4*i+2] << 8) | p[4*i+3];
+    for (int i = 16; i < 64; i++) {
+        uint32_t s0 = ROR(w[i-15], 7) ^ ROR(w[i-15], 18) ^ (w[i-15] >> 3);
+        uint32_t s1 = ROR(w[i-2], 17) ^ ROR(w[i-2], 19) ^ (w[i-2] >> 10);
+        w[i] = w[i-16] + s0 + w[i-7] + s1;
+    }
+    a = st[0]; b = st[1]; c = st[2]; d = st[3]; e = st[4]; f = st[5]; g = st[6]; h = st[7];
+    for (int i = 0; i < 64; i++) {
+        uint32_t S1 = ROR(e, 6) ^ ROR(e, 11) ^ ROR(e, 25);
+        uint32_t ch = (e & f) ^ (~e & g);
+        uint32_t t1 = h + S1 + ch + K[i] + w[i];
+        uint32_t S0 = ROR(a, 2) ^ ROR(a, 13) ^ ROR(a, 22);
+        uint32_t mj = (a & b) ^ (a & c) ^ (b & c);
+        uint32_t t2 = S0 + mj;
+        h = g; g = f; f = e; e = d + t1; d = c; c = b; b = a; a = t1 + t2;
+    }
+    st[0] += a; st[1] += b; st[2] += c; st[3] += d; st[4] += e; st[5] += f; st[6] += g; st[7] += h;
+}
+
+void sha256(const uint8_t *data, size_t len, uint8_t out[32])
+{
+    uint32_t st[8] = { 0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19 };
+    uint8_t buf[64];
+    size_t i = 0;
+    for (; i + 64 <= len; i += 64) block(st, data + i);
+    size_t rem = len - i;
+    memset(buf, 0, sizeof buf);
+    memcpy(buf, data + i, rem);
+    buf[rem] = 0x80;
+    if (rem >= 56) { block(st, buf); memset(buf, 0, sizeof buf); }
+    uint64_t bits = (uint64_t)len * 8;
+    for (int k = 0; k < 8; k++) buf[63 - k] = (uint8_t)(bits >> (8 * k));
+    block(st, buf);
+    for (int k = 0; k < 8; k++) {
+        out[4*k] = (uint8_t)(st[k] >> 24); out[4*k+1] = (uint8_t)(st[k] >> 16);
+        out[4*k+2] = (uint8_t)(st[k] >> 8); out[4*k+3] = (uint8_t)st[k];
+    }
+}
+
+void sha256_hex(const char *str, char out[65])
+{
+    static const char *hexd = "0123456789abcdef";
+    uint8_t d[32];
+    sha256((const uint8_t *)str, strlen(str), d);
+    for (int i = 0; i < 32; i++) { out[2*i] = hexd[d[i] >> 4]; out[2*i+1] = hexd[d[i] & 15]; }
+    out[64] = '\0';
+}
+
